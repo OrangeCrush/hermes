@@ -77,31 +77,40 @@
 //
 // Dependencies:
 // sendmail binary - sudo apt-get sendmail
-// write access for log file. chown www-data hermes.log
+// write access for log file. chown -R  www-data hermesRootdir (set in constructor)
 //
-// Example:
+// Examples:
 // $hermes = new Hermes("myErrorEmail@gmail.com");
 // ...
 // mysql_connect(..) or $hermes->alert(get_defined_vars(), __FILE__, __LINE__, FALSE);
 // Where TRUE will kill execution and FALSE will not.  Default is true.
-// This module was written with PHP5+ in mind
+// $hermes->log(sprintf("Coupon submitted with title of %s",$title))
 //
-// Version 1.3.0 (5/25/12)
-// 1 error per error per time period now working
-// Spam filter bypassed on 5/27/12
+// This module was written with PHP5+ in mind
+// Version 1.4.1 (7/3/12)
+// added logging capibilities
+// added correct SMTP headers
 //
 // Planned improvements- 
-// Error Page
-// circular reference allowed? (unlikely)
+// html support for email forms, driver class
 //====================================================================
 
+//====================================================================
+//TODO LIST FOR USING HERMES
+//Disable download of *.log files in .htaccess if not already there
+//Pick a directory (that you have permissions to!) for hermes files
+//	and set that in the constructor 
+//Pick a default email in the constructor as well
+//HACK THE PLANET!@
+//====================================================================
 
 
 class Hermes
 {
-	private $email, $exclude, $errors;
-	function __construct($mailTo = "") //php5 does not support multiple constructors
+	private $email, $exclude, $errors, $logDir, $loggingEnabled;
+	function __construct($mailTo = "", $log = true)
 	{
+		$this->loggingEnabled = $log;
 		if($mailTo == "")
 			$this->email = "thor@SonOfOdin.com"; //TODO change your default email
 		else
@@ -117,14 +126,44 @@ class Hermes
 			else
 				$this->email = $mailTo;
 		}
-		//Change this array to have different vairable displayed.
+		//Change this array to have different variables displayed.
 		//default is that the only data that will be reported is data that
 		//you create.  NEVER remove the GLOBALS. it has circular references
 		//everywhere.  Will be worth your time to test this out to see
 		//what you want.
 		$this->exclude = array("GLOBALS", "_SERVER", "_POST", "_GET", "_FILES", 
-				"_REQUEST", "_SESSION", "_ENV", "_COOKIE", "argc", "argv" );
+			"_REQUEST", "_SESSION", "_ENV", "_COOKIE", "argc", "argv" );
 		$this->errors = array();
+		//TODO hermes logs dir-make sure your webserver has ownership.
+		$this->logDir = "hermes";
+		if($this->loggingEnabled) 
+		{
+			try {
+				if(!is_dir($this->logDir))
+					mkdir($this->logDir);
+			}
+			catch(exception $ex) { //privs or doesnt exist
+				$this->loggingEnabled = false;	
+			}
+		}
+	}
+	
+
+	//====================================================================
+	// Header infomation for the SMTP protocol
+	//====================================================================
+	private function headers()
+	{
+		$host = $_SERVER["HTTP-HOST"] == null ? "gmail.com": $_SERVER["HTTP-HOST"];
+		$headers = "From: Hermes <hermes@$host>\r\n";
+		$headers .= "Reply-To: <hermes@$host>\r\n";
+		$headers .= "X-Sender: <hermes@$host>\r\n";
+		$headers .= "X-Mailer: PHP/".phpversion()."\r\n";
+		$headers .= "X-Priority: 3\r\n";
+		$headers .= "Return-Path: <hermes@$host>\r\n";
+		$headers .= "MIME-Version: 1.0\r\n";
+		return $headers;
+
 	}
 
 	//====================================================================
@@ -145,16 +184,17 @@ class Hermes
 				$msg = $msg."In File: ".$file." at line: ".$line. ".\n";
 				$msg = $msg.$this->parseVars($dumpedVals);
 				if(!is_array($this->email))
-					mail($this->email,"Hermes has delivered an error message" ,$msg);
+					mail($this->email,"Hermes has delivered an error message" ,$msg, $this->headers());
 				else
 					foreach($this->email as $index => $email)
-						mail($email,"Hermes has delivered an error message" ,$msg);
+						mail($email,"Hermes has delivered an error message" ,$msg,$this->headers());
 				unset($this->errors[md5($file,$line)]); //meh
 				$this->logError($file, $line);
+				$this->log("Alert called in file $file at line $line");
 			}
 		}
 		catch(exception $ex){;}//always test if you are getting emails
-		if($die) {die();}
+			if($die) {die();}
 	}
 
 	//====================================================================
@@ -224,10 +264,10 @@ class Hermes
 	private function logError($file, $line)
 	{
 		$this->errors[md5($file.$line)] = time();
-		$fh = fopen("hermes.log", "w");
+		$fh = fopen($this->logdir."hermes.log", "w");
 		if($fh == FALSE)
 			return;
-		if(flock($fh, LOCK_EX)) //race condition to be safe. may be atomic sometimes. idk 
+		if(flock($fh, LOCK_EX)) //lock file to be safe. may be atomic sometimes. idk 
 		{
 			flock($fh, LOCK_EX);
 			fseek($fh, 0 ,SEEK_END);
@@ -245,7 +285,7 @@ class Hermes
 	//====================================================================
 	private function readErrors()
 	{
-		$fh = fopen("hermes.log", "r");
+		$fh = fopen($this->logdir."hermes.log", "r");
 		if($fh == FALSE)
 			return;
 		if(flock($fh, LOCK_EX))
@@ -259,6 +299,7 @@ class Hermes
 			}
 			flock($fh, LOCK_UN);
 		}
+		fclose($fh);
 	}
 
 	//====================================================================
@@ -278,13 +319,47 @@ class Hermes
 	//====================================================================
 	// Sends a notification with a message of info.
 	//====================================================================
-	public function notify($info)
+	public function notify($sub,$msg)
 	{
 		if(!is_array($this->email))
-			mail($this->email,"Hermes has delivered a Notification." ,$msg);
+			mail($this->email, $sub, $msg, $this->headers());
 		else
 			foreach($this->email as $index => $email)
-				mail($email,"Hermes has delivered a Notification." ,$msg);
+				mail($email, $sub, $msg, $this->headers());
 	}
+
+
+	//====================================================================
+	// Logs $info to file.  uses a day by day basis for log files.
+	// file structure as set up in constrcutor:
+	// webroot/
+	// 	 hermes/
+	// 	   hermes.log (for emails and not duplicate sending)
+	//     dM_Y/
+	//     dM_Y/
+	//     .....
+	//       dM.log
+	//       	[H:i info file line]:
+	//====================================================================
+	public function log($info, $file ="", $line = "")
+	{
+		if($this->loggingEnabled)
+		{
+			try 
+			{
+				$dirpath = $this->logDir."/".date("M_Y");
+				$filepath = $dirpath."/".date("d_M_Y").".log";
+				$header = "[".date("H:i");//   ."]:   ";
+				$header = $file == "" && $line == "" ? $header."]:  " : $header." in $file at $line]: ";
+				if(!is_dir($dirpath))
+					mkdir($dirpath);
+				$fh = fopen($filepath,"a");	
+				fwrite($fh,$header.$info."\n");
+			}
+			catch(exception $ex) {} //check perms
+		}
+	}	
+
+
 }//Hermes
 ?>
