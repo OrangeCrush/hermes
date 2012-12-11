@@ -75,24 +75,22 @@
 // A simple call to alert() will log the error and send an email
 // with a dump of all variables decalred in the script when it was called.
 //
-// Dependencies:
+// DEPENDENCIES:
 // sendmail binary - sudo apt-get sendmail
 // write access for log file. chown -R  www-data hermesRootdir (set in constructor)
 //
-// Examples:
+// USAGE:
 // $hermes = new Hermes("myErrorEmail@gmail.com");
-// ...
+//
 // mysql_connect(..) or $hermes->alert(get_defined_vars(), __FILE__, __LINE__, FALSE);
 // Where TRUE will kill execution and FALSE will not.  Default is true.
 // $hermes->log(sprintf("Coupon submitted with title of %s",$title))
 //
 // This module was written with PHP5+ in mind
-// Version 1.4.1 (7/3/12)
+// Version 1.4.1 (7/3/12) FINAL
 // added logging capibilities
 // added correct SMTP headers
 //
-// Planned improvements- 
-// html support for email forms, driver class
 //====================================================================
 
 //====================================================================
@@ -112,7 +110,11 @@ class Hermes
 	{
 		$this->loggingEnabled = $log;
 		if($mailTo == "")
-			$this->email = "thor@SonOfOdin.com"; //TODO change your default email
+
+         //TODO use this as a default email address
+			$this->email = "thor@SonOfOdin.com"; 
+
+
 		else
 		{
 			if(is_array($mailTo))
@@ -126,15 +128,13 @@ class Hermes
 			else
 				$this->email = $mailTo;
 		}
-		//Change this array to have different variables displayed.
-		//default is that the only data that will be reported is data that
-		//you create.  NEVER remove the GLOBALS. it has circular references
-		//everywhere.  Will be worth your time to test this out to see
-		//what you want.
+
+      //Never Remove Globals, but feel free to adjust the rest of the values here.
 		$this->exclude = array("GLOBALS", "_SERVER", "_POST", "_GET", "_FILES", 
 			"_REQUEST", "_SESSION", "_ENV", "_COOKIE", "argc", "argv" );
 		$this->errors = array();
-		//TODO hermes logs dir-make sure your webserver has ownership.
+
+		//TODO hermes logs dir-make sure your webserver has 
 		$this->logDir = "hermes";
 		if($this->loggingEnabled) 
 		{
@@ -154,8 +154,10 @@ class Hermes
 	//====================================================================
 	private function headers()
 	{
-		$host = $_SERVER["HTTP-HOST"] == null ? "gmail.com": $_SERVER["HTTP-HOST"];
-		$headers = "From: Hermes <hermes@$host>\r\n";
+      //TODO
+      //If your email is getting blocked my spam, these will nee to be adjusted for your application.
+		$host = $_SERVER["HTTP_HOST"] == null ? "gmail.com": $_SERVER["HTTP_HOST"];
+		$headers = "From: Hermes\r\n";
 		$headers .= "Reply-To: <hermes@$host>\r\n";
 		$headers .= "X-Sender: <hermes@$host>\r\n";
 		$headers .= "X-Mailer: PHP/".phpversion()."\r\n";
@@ -167,11 +169,10 @@ class Hermes
 	}
 
 	//====================================================================
-	// Sends the email. ONLY public method you will need to call.
+   // Sends the email. ONLY public method you will need to call. if you
+   // are using this as a monitoring service.
+   //
 	// ex:  errorH->alert(get_defined_vars(), __FILE__,__LINE__);
-	// day has 86400 seconds (default)
-	// week has 604800
-	// hour 3600
 	//====================================================================
 	public function alert($dumpedVals, $file, $line, $die = TRUE)
 	{
@@ -218,9 +219,7 @@ class Hermes
 	}
 
 	//====================================================================
-	// The masterpiece.  Parses the array of all variables in the page
-	// that faulted. As of now, Circular references will crash your server.
-	// ie circular linked list
+	//  Parses the array of all variables in the page
 	//====================================================================
 	private function parseVars($vals, $tab ="")//optional recursive values for output
 	{
@@ -318,6 +317,9 @@ class Hermes
 
 	//====================================================================
 	// Sends a notification with a message of info.
+   //
+   // If you are only using hermes as an SMTP Interface, 
+   // this is the method for you.
 	//====================================================================
 	public function notify($sub,$msg)
 	{
