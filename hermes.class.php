@@ -105,262 +105,262 @@
 
 class Hermes
 {
-	private $email, $exclude, $errors, $logDir, $loggingEnabled;
-	function __construct($mailTo = "", $log = true)
-	{
-		$this->loggingEnabled = $log;
-		if($mailTo == "")
+   private $email, $exclude, $errors, $logDir, $loggingEnabled;
+   function __construct($mailTo = "", $log = true)
+   {
+      $this->loggingEnabled = $log;
+      if($mailTo == "")
 
          //TODO use this as a default email address
-			$this->email = "thor@SonOfOdin.com"; 
+         $this->email = "thor@SonOfOdin.com"; 
 
 
-		else
-		{
-			if(is_array($mailTo))
-			{
-				$this->email = array();
-				for($i = 0; $i < count($mailTo); $i++)
-				{
-					$this->email[$i] = $mailTo[$i];
-				}
-			}
-			else
-				$this->email = $mailTo;
-		}
+      else
+      {
+         if(is_array($mailTo))
+         {
+            $this->email = array();
+            for($i = 0; $i < count($mailTo); $i++)
+            {
+               $this->email[$i] = $mailTo[$i];
+            }
+         }
+         else
+            $this->email = $mailTo;
+      }
 
       //Never Remove Globals, but feel free to adjust the rest of the values here.
-		$this->exclude = array("GLOBALS", "_SERVER", "_POST", "_GET", "_FILES", 
-			"_REQUEST", "_SESSION", "_ENV", "_COOKIE", "argc", "argv" );
-		$this->errors = array();
+      $this->exclude = array("GLOBALS", "_SERVER", "_POST", "_GET", "_FILES", 
+         "_REQUEST", "_SESSION", "_ENV", "_COOKIE", "argc", "argv" );
+      $this->errors = array();
 
-		//TODO hermes logs dir-make sure your webserver has 
-		$this->logDir = "hermes";
-		if($this->loggingEnabled) 
-		{
-			try {
-				if(!is_dir($this->logDir))
-					mkdir($this->logDir);
-			}
-			catch(exception $ex) { //privs or doesnt exist
-				$this->loggingEnabled = false;	
-			}
-		}
-	}
-	
+      //TODO hermes logs dir-make sure your webserver has 
+      $this->logDir = "hermes";
+      if($this->loggingEnabled) 
+      {
+         try {
+            if(!is_dir($this->logDir))
+               mkdir($this->logDir);
+         }
+         catch(exception $ex) { //privs or doesnt exist
+            $this->loggingEnabled = false;	
+         }
+      }
+   }
 
-	//====================================================================
-	// Header infomation for the SMTP protocol
-	//====================================================================
-	private function headers()
-	{
+
+   //====================================================================
+   // Header infomation for the SMTP protocol
+   //====================================================================
+   private function headers()
+   {
       //TODO
       //If your email is getting blocked my spam, these will nee to be adjusted for your application.
-		$host = $_SERVER["HTTP_HOST"] == null ? "gmail.com": $_SERVER["HTTP_HOST"];
-		$headers = "From: Hermes\r\n";
-		$headers .= "Reply-To: <hermes@$host>\r\n";
-		$headers .= "X-Sender: <hermes@$host>\r\n";
-		$headers .= "X-Mailer: PHP/".phpversion()."\r\n";
-		$headers .= "X-Priority: 3\r\n";
-		$headers .= "Return-Path: <hermes@$host>\r\n";
-		$headers .= "MIME-Version: 1.0\r\n";
-		return $headers;
+      $host = $_SERVER["HTTP_HOST"] == null ? "gmail.com": $_SERVER["HTTP_HOST"];
+      $headers = "From: Hermes\r\n";
+      $headers .= "Reply-To: <hermes@$host>\r\n";
+      $headers .= "X-Sender: <hermes@$host>\r\n";
+      $headers .= "X-Mailer: PHP/".phpversion()."\r\n";
+      $headers .= "X-Priority: 3\r\n";
+      $headers .= "Return-Path: <hermes@$host>\r\n";
+      $headers .= "MIME-Version: 1.0\r\n";
+      return $headers;
 
-	}
+   }
 
-	//====================================================================
+   //====================================================================
    // Sends the email. ONLY public method you will need to call. if you
    // are using this as a monitoring service.
    //
-	// ex:  errorH->alert(get_defined_vars(), __FILE__,__LINE__);
-	//====================================================================
-	public function alert($dumpedVals, $file, $line, $die = TRUE)
-	{
-		try 
-		{ 
-			$this->readErrors();
-			if(!$this->beenSent(md5($file.$line),86400))
-			{
-				$msg =  "Error report generated on: ".Date("m/d/Y")."\n";
-				$msg = $msg."In File: ".$file." at line: ".$line. ".\n";
-				$msg = $msg.$this->parseVars($dumpedVals);
-				if(!is_array($this->email))
-					mail($this->email,"Hermes has delivered an error message" ,$msg, $this->headers());
-				else
-					foreach($this->email as $index => $email)
-						mail($email,"Hermes has delivered an error message" ,$msg,$this->headers());
-				unset($this->errors[md5($file,$line)]); //meh
-				$this->logError($file, $line);
-				$this->log("Alert called in file $file at line $line");
-			}
-		}
-		catch(exception $ex){;}//always test if you are getting emails
-			if($die) {die();}
-	}
+   // ex:  errorH->alert(get_defined_vars(), __FILE__,__LINE__);
+   //====================================================================
+   public function alert($dumpedVals, $file, $line, $die = TRUE)
+   {
+      try 
+      { 
+         $this->readErrors();
+         if(!$this->beenSent(md5($file.$line),86400))
+         {
+            $msg =  "Error report generated on: ".Date("m/d/Y")."\n";
+            $msg = $msg."In File: ".$file." at line: ".$line. ".\n";
+            $msg = $msg.$this->parseVars($dumpedVals);
+            if(!is_array($this->email))
+               mail($this->email,"Hermes has delivered an error message" ,$msg, $this->headers());
+            else
+               foreach($this->email as $index => $email)
+                  mail($email,"Hermes has delivered an error message" ,$msg,$this->headers());
+            unset($this->errors[md5($file,$line)]); //meh
+            $this->logError($file, $line);
+            $this->log("Alert called in file $file at line $line");
+         }
+      }
+      catch(exception $ex){;}//always test if you are getting emails
+         if($die) {die();}
+   }
 
-	//====================================================================
-	// Filters data out from the excludes array, and does not dump info
-	// from this class.
-	//====================================================================
-	private function cleanData($key, $val)
-	{
-		if($val instanceof Hermes)
-		{
-			return FALSE;
-		}
-		foreach($this->exclude as $index => $val)
-		{
-			if($key == $val && !is_numeric($key))
-			{
-				return FALSE;
-			}
-		}
-		return TRUE;
-	}
+   //====================================================================
+   // Filters data out from the excludes array, and does not dump info
+   // from this class.
+   //====================================================================
+   private function cleanData($key, $val)
+   {
+      if($val instanceof Hermes)
+      {
+         return FALSE;
+      }
+      foreach($this->exclude as $index => $val)
+      {
+         if($key == $val && !is_numeric($key))
+         {
+            return FALSE;
+         }
+      }
+      return TRUE;
+   }
 
-	//====================================================================
-	//  Parses the array of all variables in the page
-	//====================================================================
-	private function parseVars($vals, $tab ="")//optional recursive values for output
-	{
-		$rval = "";
-		foreach($vals as $key => $val)
-		{
-			if( $this->cleanData($key, $val))
-			{
-				if(is_object($val))
-				{
-					$rval = $rval.$tab."Object: ".$key." of type: ".get_class($val)."\n";
-					$rval = $rval.$tab."{\n";
-					$newAry = get_object_vars($val);
-					$rval = $rval.$this->parseVars($newAry, $tab."   ");
-					$rval = $rval.$tab."}\n";
-				}
-				elseif(is_array($val))
-				{
-					$rval = $rval.$tab."Array: ".$key."\n";
-					$rval = $rval.$tab."{\n";
-					$rval = $rval.$this->parseVars($val, $tab."   ");
-					$rval = $rval.$tab."}\n";
-				}
-				else
-				{
-					if($val != "")
-						$rval= $rval.$tab.$key." = ".$val."\n";
-					else
-						$rval= $rval.$tab.$key." = NULL\n";
-				}
-			}
-		}
-		return $rval;
-	}
+   //====================================================================
+   //  Parses the array of all variables in the page
+   //====================================================================
+   private function parseVars($vals, $tab ="")//optional recursive values for output
+   {
+      $rval = "";
+      foreach($vals as $key => $val)
+      {
+         if( $this->cleanData($key, $val))
+         {
+            if(is_object($val))
+            {
+               $rval = $rval.$tab."Object: ".$key." of type: ".get_class($val)."\n";
+               $rval = $rval.$tab."{\n";
+               $newAry = get_object_vars($val);
+               $rval = $rval.$this->parseVars($newAry, $tab."   ");
+               $rval = $rval.$tab."}\n";
+            }
+            elseif(is_array($val))
+            {
+               $rval = $rval.$tab."Array: ".$key."\n";
+               $rval = $rval.$tab."{\n";
+               $rval = $rval.$this->parseVars($val, $tab."   ");
+               $rval = $rval.$tab."}\n";
+            }
+            else
+            {
+               if($val != "")
+                  $rval= $rval.$tab.$key." = ".$val."\n";
+               else
+                  $rval= $rval.$tab.$key." = NULL\n";
+            }
+         }
+      }
+      return $rval;
+   }
 
 
-	//====================================================================
-	// Writes an error to file so that the error is not reported over and over
-	// Overwirtes file each time.
-	//====================================================================
-	private function logError($file, $line)
-	{
-		$this->errors[md5($file.$line)] = time();
-		$fh = fopen($this->logdir."hermes.log", "w");
-		if($fh == FALSE)
-			return;
-		if(flock($fh, LOCK_EX)) //lock file to be safe. may be atomic sometimes. idk 
-		{
-			flock($fh, LOCK_EX);
-			fseek($fh, 0 ,SEEK_END);
-			foreach($this->errors as $key => $val)
-			{
-				fputs($fh, $key.' '.$val."\n");
-			}
-			flock($fh, LOCK_UN);
-		}
-		fclose($fh);
-	}
+   //====================================================================
+   // Writes an error to file so that the error is not reported over and over
+   // Overwirtes file each time.
+   //====================================================================
+   private function logError($file, $line)
+   {
+      $this->errors[md5($file.$line)] = time();
+      $fh = fopen($this->logdir."hermes.log", "w");
+      if($fh == FALSE)
+         return;
+      if(flock($fh, LOCK_EX)) //lock file to be safe. may be atomic sometimes. idk 
+      {
+         flock($fh, LOCK_EX);
+         fseek($fh, 0 ,SEEK_END);
+         foreach($this->errors as $key => $val)
+         {
+            fputs($fh, $key.' '.$val."\n");
+         }
+         flock($fh, LOCK_UN);
+      }
+      fclose($fh);
+   }
 
-	//====================================================================
-	// Reads hermes.log and reads it into the errors array.
-	//====================================================================
-	private function readErrors()
-	{
-		$fh = fopen($this->logdir."hermes.log", "r");
-		if($fh == FALSE)
-			return;
-		if(flock($fh, LOCK_EX))
-		{
-			$line = fgets($fh);
-			while($line != FALSE)
-			{
-				$pair = split(' ', $line);
-				$this->errors[$pair[0]] = $pair[1]; //undefined offset whatever lol
-				$line = fgets($fh);
-			}
-			flock($fh, LOCK_UN);
-		}
-		fclose($fh);
-	}
+   //====================================================================
+   // Reads hermes.log and reads it into the errors array.
+   //====================================================================
+   private function readErrors()
+   {
+      $fh = fopen($this->logdir."hermes.log", "r");
+      if($fh == FALSE)
+         return;
+      if(flock($fh, LOCK_EX))
+      {
+         $line = fgets($fh);
+         while($line != FALSE)
+         {
+            $pair = split(' ', $line);
+            $this->errors[$pair[0]] = $pair[1]; //undefined offset whatever lol
+            $line = fgets($fh);
+         }
+         flock($fh, LOCK_UN);
+      }
+      fclose($fh);
+   }
 
-	//====================================================================
-	// Checks if an error message was already sent since the given
-	// time period in seconds.
-	//====================================================================
-	private function beenSent($hash, $time)
-	{
-		foreach($this->errors as $key => $val)
-		{
-			if($key == $hash && $val + $time > time())
-				return TRUE;
-		}
-		return FALSE;
-	}
+   //====================================================================
+   // Checks if an error message was already sent since the given
+   // time period in seconds.
+   //====================================================================
+   private function beenSent($hash, $time)
+   {
+      foreach($this->errors as $key => $val)
+      {
+         if($key == $hash && $val + $time > time())
+            return TRUE;
+      }
+      return FALSE;
+   }
 
-	//====================================================================
-	// Sends a notification with a message of info.
+   //====================================================================
+   // Sends a notification with a message of info.
    //
    // If you are only using hermes as an SMTP Interface, 
    // this is the method for you.
-	//====================================================================
-	public function notify($sub,$msg)
-	{
-		if(!is_array($this->email))
-			mail($this->email, $sub, $msg, $this->headers());
-		else
-			foreach($this->email as $index => $email)
-				mail($email, $sub, $msg, $this->headers());
-	}
+   //====================================================================
+   public function notify($sub,$msg)
+   {
+      if(!is_array($this->email))
+         mail($this->email, $sub, $msg, $this->headers());
+      else
+         foreach($this->email as $index => $email)
+            mail($email, $sub, $msg, $this->headers());
+   }
 
 
-	//====================================================================
-	// Logs $info to file.  uses a day by day basis for log files.
-	// file structure as set up in constrcutor:
-	// webroot/
-	// 	 hermes/
-	// 	   hermes.log (for emails and not duplicate sending)
-	//     dM_Y/
-	//     dM_Y/
-	//     .....
-	//       dM.log
-	//       	[H:i info file line]:
-	//====================================================================
-	public function log($info, $file ="", $line = "")
-	{
-		if($this->loggingEnabled)
-		{
-			try 
-			{
-				$dirpath = $this->logDir."/".date("M_Y");
-				$filepath = $dirpath."/".date("d_M_Y").".log";
-				$header = "[".date("H:i");//   ."]:   ";
-				$header = $file == "" && $line == "" ? $header."]:  " : $header." in $file at $line]: ";
-				if(!is_dir($dirpath))
-					mkdir($dirpath);
-				$fh = fopen($filepath,"a");	
-				fwrite($fh,$header.$info."\n");
-			}
-			catch(exception $ex) {} //check perms
-		}
-	}	
+   //====================================================================
+   // Logs $info to file.  uses a day by day basis for log files.
+   // file structure as set up in constrcutor:
+   // webroot/
+   // 	 hermes/
+   // 	   hermes.log (for emails and not duplicate sending)
+   //     dM_Y/
+   //     dM_Y/
+   //     .....
+   //       dM.log
+   //       	[H:i info file line]:
+   //====================================================================
+   public function log($info, $file ="", $line = "")
+   {
+      if($this->loggingEnabled)
+      {
+         try 
+         {
+            $dirpath = $this->logDir."/".date("M_Y");
+            $filepath = $dirpath."/".date("d_M_Y").".log";
+            $header = "[".date("H:i");//   ."]:   ";
+            $header = $file == "" && $line == "" ? $header."]:  " : $header." in $file at $line]: ";
+            if(!is_dir($dirpath))
+               mkdir($dirpath);
+            $fh = fopen($filepath,"a");	
+            fwrite($fh,$header.$info."\n");
+         }
+         catch(exception $ex) {} //check perms
+      }
+   }	
 
 
 }//Hermes
