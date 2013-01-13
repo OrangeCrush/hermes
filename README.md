@@ -20,7 +20,7 @@ After Installing Node (joyent/node) and npm (Should be included with node 0.8+)
 
 <p>
 nodemailer is a great project check it out at <br>
-<a href="http://github.com/andris9/nodemailer">nodemailer][http://github.com/andris9/nodemailer</a>
+<a href="http://github.com/andris9/nodemailer">nodemailer</a>
 </p>
 
 
